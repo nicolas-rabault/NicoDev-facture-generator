@@ -96,21 +96,9 @@
     /* Invoice preview */
     .invoice-preview {
       background: #fff; padding: 40px; font-family: 'Georgia', serif; font-size: 11px;
-      line-height: 1.6; color: #333; width: 210mm; margin: 0 auto;
+      line-height: 1.6; color: #333; max-width: 210mm; margin: 0 auto;
       border: 1px solid var(--border); border-radius: 4px;
     }
-    .invoice-preview h1 { font-size: 22px; margin-bottom: 4px; }
-    .invoice-preview .inv-header { display: table; width: 100%; margin-bottom: 30px; }
-    .invoice-preview .inv-party { display: table-cell; width: 50%; vertical-align: top; }
-    .invoice-preview .inv-party strong { display: block; font-size: 13px; margin-bottom: 4px; }
-    .invoice-preview .inv-meta { display: table; width: 100%; margin-bottom: 20px; padding: 10px 0; border-top: 1px solid #ddd; border-bottom: 1px solid #ddd; }
-    .invoice-preview .inv-meta > div { display: table-cell; }
-    .invoice-preview table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-    .invoice-preview th { background: #f5f5f5; padding: 8px; text-align: left; border: 1px solid #ddd; font-size: 10px; }
-    .invoice-preview td { padding: 8px; border: 1px solid #ddd; font-size: 10px; }
-    .invoice-preview .inv-total { text-align: right; font-size: 16px; font-weight: bold; margin: 10px 0 20px; }
-    .invoice-preview .inv-footer { font-size: 9px; color: #666; border-top: 1px solid #ddd; padding-top: 12px; margin-top: 20px; }
-    .invoice-preview .inv-footer p { margin-bottom: 4px; }
 
     /* Checkbox */
     input[type="checkbox"] { width: auto; margin-right: 6px; cursor: pointer; }
@@ -556,126 +544,95 @@
   // ═══════════════════════════════════════════════
   //  STEP 4: PREVIEW & PDF
   // ═══════════════════════════════════════════════
-  function generatePreview() {
+  function buildInvoiceHTML() {
     const em = getEmetteur();
     const sel = heures.filter(h => h.selected);
     const totalHT = sel.reduce((s, h) => s + h.montant, 0);
-    const container = document.getElementById('invoicePreviewContainer');
-
-    container.innerHTML = `
-      <div class="invoice-preview" id="invoicePrint">
-        <div style="text-align:center; margin-bottom:24px;">
-          <h1>FACTURE</h1>
-          <p style="font-size:13px; color:#666;">${esc(document.getElementById('invNumero').value)}</p>
-        </div>
-
-        <div class="inv-header">
-          <div class="inv-party">
-            <strong>Émetteur</strong>
+    return `
+      <div style="text-align:center; margin-bottom:24px;">
+        <h1 style="font-size:22px; margin:0 0 4px;">FACTURE</h1>
+        <p style="font-size:13px; color:#666; margin:0;">${esc(document.getElementById('invNumero').value)}</p>
+      </div>
+      <table style="width:100%; margin-bottom:30px; border:none; border-collapse:collapse;">
+        <tr>
+          <td style="vertical-align:top; width:50%; border:none; padding:0;">
+            <strong style="display:block; font-size:13px; margin-bottom:4px;">Émetteur</strong>
             ${esc(em.nom || '')}<br>
             ${em.activite ? esc(em.activite) + '<br>' : ''}
             ${em.adresse ? esc(em.adresse) + '<br>' : ''}
             ${em.villeCP ? esc(em.villeCP) + '<br>' : ''}
             ${em.siret ? 'SIRET : ' + esc(em.siret) + '<br>' : ''}
             ${em.email ? esc(em.email) : ''}
-          </div>
-          <div class="inv-party" style="text-align:right;">
-            <strong>Client</strong>
+          </td>
+          <td style="vertical-align:top; width:50%; text-align:right; border:none; padding:0;">
+            <strong style="display:block; font-size:13px; margin-bottom:4px;">Client</strong>
             ${esc(selectedClient.nom)}<br>
             ${selectedClient.adresse ? esc(selectedClient.adresse) + '<br>' : ''}
             ${selectedClient.cp || selectedClient.ville ? esc(selectedClient.cp + ' ' + selectedClient.ville) + '<br>' : ''}
             ${selectedClient.pays ? esc(selectedClient.pays) + '<br>' : ''}
             ${selectedClient.siret ? 'SIRET/TVA : ' + esc(selectedClient.siret) : ''}
-          </div>
-        </div>
-
-        <div class="inv-meta">
-          <div>Date d'émission : <strong>${formatDate(document.getElementById('invDateEmission').value)}</strong></div>
-          <div>Date d'échéance : <strong>${formatDate(document.getElementById('invDateEcheance').value)}</strong></div>
-          <div>Paiement : <strong>${esc(document.getElementById('invMode').value)}</strong></div>
-        </div>
-
-        <table>
-          <thead>
+          </td>
+        </tr>
+      </table>
+      <table style="width:100%; margin-bottom:20px; border:none; border-collapse:collapse; border-top:1px solid #ddd; border-bottom:1px solid #ddd;">
+        <tr>
+          <td style="padding:10px 0; border:none;">Date d'émission : <strong>${formatDate(document.getElementById('invDateEmission').value)}</strong></td>
+          <td style="padding:10px 0; border:none; text-align:center;">Date d'échéance : <strong>${formatDate(document.getElementById('invDateEcheance').value)}</strong></td>
+          <td style="padding:10px 0; border:none; text-align:right;">Paiement : <strong>${esc(document.getElementById('invMode').value)}</strong></td>
+        </tr>
+      </table>
+      <table style="width:100%; border-collapse:collapse; margin-bottom:20px;">
+        <thead>
+          <tr>
+            <th style="background:#f5f5f5; padding:8px; text-align:left; border:1px solid #ddd; font-size:10px;">Description</th>
+            <th style="background:#f5f5f5; padding:8px; text-align:left; border:1px solid #ddd; font-size:10px;">Date</th>
+            <th style="background:#f5f5f5; padding:8px; text-align:right; border:1px solid #ddd; font-size:10px;">Qté (h)</th>
+            <th style="background:#f5f5f5; padding:8px; text-align:right; border:1px solid #ddd; font-size:10px;">Taux HT (€)</th>
+            <th style="background:#f5f5f5; padding:8px; text-align:right; border:1px solid #ddd; font-size:10px;">Montant HT (€)</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${sel.map(h => `
             <tr>
-              <th>Description</th>
-              <th>Date</th>
-              <th style="text-align:right;">Qté (h)</th>
-              <th style="text-align:right;">Taux HT (€)</th>
-              <th style="text-align:right;">Montant HT (€)</th>
+              <td style="padding:8px; border:1px solid #ddd; font-size:10px;">${esc(h.sujet)}</td>
+              <td style="padding:8px; border:1px solid #ddd; font-size:10px;">${formatDate(h.date)}</td>
+              <td style="padding:8px; border:1px solid #ddd; font-size:10px; text-align:right;">${h.heures}</td>
+              <td style="padding:8px; border:1px solid #ddd; font-size:10px; text-align:right;">${formatMoney(h.taux)}</td>
+              <td style="padding:8px; border:1px solid #ddd; font-size:10px; text-align:right;">${formatMoney(h.montant)}</td>
             </tr>
-          </thead>
-          <tbody>
-            ${sel.map(h => `
-              <tr>
-                <td>${esc(h.sujet)}</td>
-                <td>${formatDate(h.date)}</td>
-                <td style="text-align:right;">${h.heures}</td>
-                <td style="text-align:right;">${formatMoney(h.taux)}</td>
-                <td style="text-align:right;">${formatMoney(h.montant)}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-
-        <div class="inv-total">
-          Total HT : ${formatMoney(totalHT)} €
-        </div>
-
-        <p style="font-size:11px; font-weight:bold; margin-bottom:16px;">TVA non applicable, art. 293 B du CGI</p>
-
-        ${em.iban ? `<p style="font-size:10px; margin-bottom:8px;">IBAN : ${esc(em.iban)}</p>` : ''}
-
-        ${document.getElementById('invNotes').value ? `<p style="font-size:10px; margin-bottom:12px;">${esc(document.getElementById('invNotes').value)}</p>` : ''}
-
-        <div class="inv-footer">
-          <p><strong>Conditions de paiement :</strong> Règlement à réception, au plus tard le ${formatDate(document.getElementById('invDateEcheance').value)}.</p>
-          <p><strong>Pénalités de retard :</strong> En cas de retard de paiement, une pénalité égale à 3 fois le taux d'intérêt légal sera exigée (art. L441-10 C.com).</p>
-          <p><strong>Indemnité forfaitaire de recouvrement :</strong> 40 € (Art. L441-10 C.com).</p>
-        </div>
+          `).join('')}
+        </tbody>
+      </table>
+      <div style="text-align:right; font-size:16px; font-weight:bold; margin:10px 0 20px;">
+        Total HT : ${formatMoney(totalHT)} €
+      </div>
+      <p style="font-size:11px; font-weight:bold; margin-bottom:16px;">TVA non applicable, art. 293 B du CGI</p>
+      ${em.iban ? `<p style="font-size:10px; margin-bottom:8px;">IBAN : ${esc(em.iban)}</p>` : ''}
+      ${document.getElementById('invNotes').value ? `<p style="font-size:10px; margin-bottom:12px;">${esc(document.getElementById('invNotes').value)}</p>` : ''}
+      <div style="font-size:9px; color:#666; border-top:1px solid #ddd; padding-top:12px; margin-top:20px;">
+        <p style="margin-bottom:4px;"><strong>Conditions de paiement :</strong> Règlement à réception, au plus tard le ${formatDate(document.getElementById('invDateEcheance').value)}.</p>
+        <p style="margin-bottom:4px;"><strong>Pénalités de retard :</strong> En cas de retard de paiement, une pénalité égale à 3 fois le taux d'intérêt légal sera exigée (art. L441-10 C.com).</p>
+        <p style="margin-bottom:4px;"><strong>Indemnité forfaitaire de recouvrement :</strong> 40 € (Art. L441-10 C.com).</p>
       </div>
     `;
   }
 
-  const INVOICE_CSS = `
-    * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family:Georgia,serif; font-size:11px; line-height:1.6; color:#333; padding:40px; background:#fff; }
-    h1 { font-size:22px; margin-bottom:4px; }
-    .inv-header { display:table; width:100%; margin-bottom:30px; }
-    .inv-party { display:table-cell; width:50%; vertical-align:top; }
-    .inv-party strong { display:block; font-size:13px; margin-bottom:4px; }
-    .inv-meta { display:table; width:100%; margin-bottom:20px; padding:10px 0; border-top:1px solid #ddd; border-bottom:1px solid #ddd; }
-    .inv-meta > div { display:table-cell; }
-    table { width:100%; border-collapse:collapse; margin-bottom:20px; }
-    th { background:#f5f5f5; padding:8px; text-align:left; border:1px solid #ddd; font-size:10px; }
-    td { padding:8px; border:1px solid #ddd; font-size:10px; }
-    .inv-total { text-align:right; font-size:16px; font-weight:bold; margin:10px 0 20px; }
-    .inv-footer { font-size:9px; color:#666; border-top:1px solid #ddd; padding-top:12px; margin-top:20px; }
-    .inv-footer p { margin-bottom:4px; }
-  `;
+  function generatePreview() {
+    const container = document.getElementById('invoicePreviewContainer');
+    container.innerHTML = '<div class="invoice-preview" id="invoicePrint">' + buildInvoiceHTML() + '</div>';
+  }
 
   function exportPDF() {
-    const el = document.getElementById('invoicePrint');
-    if (!el) return toast('Générez d\'abord un aperçu', 'error');
-
-    const iframe = document.createElement('iframe');
-    iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;height:1123px;border:none;';
-    document.body.appendChild(iframe);
-    const doc = iframe.contentDocument;
-    doc.open();
-    doc.write('<!DOCTYPE html><html><head><style>' + INVOICE_CSS + '</style></head><body>' + el.innerHTML + '</body></html>');
-    doc.close();
-
+    if (!document.getElementById('invoicePrint')) return toast('Générez d\'abord un aperçu', 'error');
+    const fullHTML = '<div style="font-family:Georgia,serif; font-size:11px; line-height:1.6; color:#333;">' + buildInvoiceHTML() + '</div>';
     const opt = {
-      margin: 0,
+      margin: [10, 10, 10, 10],
       filename: document.getElementById('invNumero').value + '.pdf',
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, width: 794, windowWidth: 794 },
-      jsPDF: { unit: 'px', format: 'a4', orientation: 'portrait', hotfixes: ['px_scaling'] },
+      html2canvas: { scale: 2 },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
     };
-    html2pdf().set(opt).from(doc.body).save().then(() => {
-      document.body.removeChild(iframe);
-    });
+    html2pdf().set(opt).from(fullHTML, 'string').save();
     toast('PDF en cours de génération...', 'success');
   }
 
