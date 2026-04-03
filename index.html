@@ -96,14 +96,15 @@
     /* Invoice preview */
     .invoice-preview {
       background: #fff; padding: 40px; font-family: 'Georgia', serif; font-size: 11px;
-      line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto;
+      line-height: 1.6; color: #333; width: 210mm; margin: 0 auto;
       border: 1px solid var(--border); border-radius: 4px;
     }
     .invoice-preview h1 { font-size: 22px; margin-bottom: 4px; }
-    .invoice-preview .inv-header { display: flex; justify-content: space-between; margin-bottom: 30px; }
-    .invoice-preview .inv-party { max-width: 45%; }
+    .invoice-preview .inv-header { display: table; width: 100%; margin-bottom: 30px; }
+    .invoice-preview .inv-party { display: table-cell; width: 50%; vertical-align: top; }
     .invoice-preview .inv-party strong { display: block; font-size: 13px; margin-bottom: 4px; }
-    .invoice-preview .inv-meta { display: flex; justify-content: space-between; margin-bottom: 20px; padding: 10px 0; border-top: 1px solid #ddd; border-bottom: 1px solid #ddd; }
+    .invoice-preview .inv-meta { display: table; width: 100%; margin-bottom: 20px; padding: 10px 0; border-top: 1px solid #ddd; border-bottom: 1px solid #ddd; }
+    .invoice-preview .inv-meta > div { display: table-cell; }
     .invoice-preview table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
     .invoice-preview th { background: #f5f5f5; padding: 8px; text-align: left; border: 1px solid #ddd; font-size: 10px; }
     .invoice-preview td { padding: 8px; border: 1px solid #ddd; font-size: 10px; }
@@ -638,14 +639,30 @@
   function exportPDF() {
     const el = document.getElementById('invoicePrint');
     if (!el) return toast('Générez d\'abord un aperçu', 'error');
+
+    // Clone into an off-screen container so html2canvas captures it cleanly
+    const clone = el.cloneNode(true);
+    clone.style.position = 'fixed';
+    clone.style.left = '0';
+    clone.style.top = '0';
+    clone.style.width = '210mm';
+    clone.style.padding = '15mm';
+    clone.style.background = '#fff';
+    clone.style.zIndex = '-9999';
+    clone.style.border = 'none';
+    clone.style.borderRadius = '0';
+    document.body.appendChild(clone);
+
     const opt = {
-      margin: 10,
+      margin: 0,
       filename: `${document.getElementById('invNumero').value}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2 },
+      html2canvas: { scale: 2, useCORS: true, scrollY: 0, windowWidth: clone.scrollWidth },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
     };
-    html2pdf().set(opt).from(el).save();
+    html2pdf().set(opt).from(clone).save().then(() => {
+      document.body.removeChild(clone);
+    });
     toast('PDF en cours de génération...', 'success');
   }
 
