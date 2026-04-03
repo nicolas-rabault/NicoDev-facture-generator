@@ -593,7 +593,7 @@
         </thead>
         <tbody>
           ${sel.map(h => `
-            <tr>
+            <tr style="page-break-inside:avoid;">
               <td style="padding:8px; border:1px solid #ddd; font-size:10px;">${esc(h.sujet)}</td>
               <td style="padding:8px; border:1px solid #ddd; font-size:10px;">${formatDate(h.date)}</td>
               <td style="padding:8px; border:1px solid #ddd; font-size:10px; text-align:right;">${h.heures}</td>
@@ -609,7 +609,7 @@
       <p style="font-size:11px; font-weight:bold; margin-bottom:16px;">TVA non applicable, art. 293 B du CGI</p>
       ${em.iban ? `<p style="font-size:10px; margin-bottom:8px;">IBAN : ${esc(em.iban)}</p>` : ''}
       ${document.getElementById('invNotes').value ? `<p style="font-size:10px; margin-bottom:12px;">${esc(document.getElementById('invNotes').value)}</p>` : ''}
-      <div style="font-size:9px; color:#666; border-top:1px solid #ddd; padding-top:12px; margin-top:20px;">
+      <div style="font-size:9px; color:#666; border-top:1px solid #ddd; padding-top:12px; margin-top:20px; page-break-inside:avoid;">
         <p style="margin-bottom:4px;"><strong>Conditions de paiement :</strong> Règlement à réception, au plus tard le ${formatDate(document.getElementById('invDateEcheance').value)}.</p>
         <p style="margin-bottom:4px;"><strong>Pénalités de retard :</strong> En cas de retard de paiement, une pénalité égale à 3 fois le taux d'intérêt légal sera exigée (art. L441-10 C.com).</p>
         <p style="margin-bottom:4px;"><strong>Indemnité forfaitaire de recouvrement :</strong> 40 € (Art. L441-10 C.com).</p>
@@ -631,6 +631,7 @@
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2 },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
     };
     html2pdf().set(opt).from(fullHTML, 'string').save();
     toast('PDF en cours de génération...', 'success');
