@@ -636,46 +636,41 @@
     `;
   }
 
+  const INVOICE_CSS = `
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:Georgia,serif; font-size:11px; line-height:1.6; color:#333; padding:40px; background:#fff; }
+    h1 { font-size:22px; margin-bottom:4px; }
+    .inv-header { display:table; width:100%; margin-bottom:30px; }
+    .inv-party { display:table-cell; width:50%; vertical-align:top; }
+    .inv-party strong { display:block; font-size:13px; margin-bottom:4px; }
+    .inv-meta { display:table; width:100%; margin-bottom:20px; padding:10px 0; border-top:1px solid #ddd; border-bottom:1px solid #ddd; }
+    .inv-meta > div { display:table-cell; }
+    table { width:100%; border-collapse:collapse; margin-bottom:20px; }
+    th { background:#f5f5f5; padding:8px; text-align:left; border:1px solid #ddd; font-size:10px; }
+    td { padding:8px; border:1px solid #ddd; font-size:10px; }
+    .inv-total { text-align:right; font-size:16px; font-weight:bold; margin:10px 0 20px; }
+    .inv-footer { font-size:9px; color:#666; border-top:1px solid #ddd; padding-top:12px; margin-top:20px; }
+    .inv-footer p { margin-bottom:4px; }
+  `;
+
   function exportPDF() {
     const el = document.getElementById('invoicePrint');
     if (!el) return toast('Générez d\'abord un aperçu', 'error');
 
-    // Build a self-contained HTML string so html2pdf doesn't depend on page context
-    const html = `
-      <div style="font-family:Georgia,serif;font-size:11px;line-height:1.6;color:#333;padding:0;margin:0;">
-        ${el.innerHTML}
-      </div>
-    `;
-    // Inject into a temporary hidden iframe for isolated rendering
     const iframe = document.createElement('iframe');
-    iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:210mm;height:297mm;border:none;';
+    iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;height:1123px;border:none;';
     document.body.appendChild(iframe);
     const doc = iframe.contentDocument;
     doc.open();
-    doc.write(`<!DOCTYPE html><html><head><style>
-      * { margin:0; padding:0; box-sizing:border-box; }
-      body { font-family:Georgia,serif; font-size:11px; line-height:1.6; color:#333; padding:15mm; background:#fff; }
-      h1 { font-size:22px; margin-bottom:4px; }
-      .inv-header { display:table; width:100%; margin-bottom:30px; }
-      .inv-party { display:table-cell; width:50%; vertical-align:top; }
-      .inv-party strong { display:block; font-size:13px; margin-bottom:4px; }
-      .inv-meta { display:table; width:100%; margin-bottom:20px; padding:10px 0; border-top:1px solid #ddd; border-bottom:1px solid #ddd; }
-      .inv-meta > div { display:table-cell; }
-      table { width:100%; border-collapse:collapse; margin-bottom:20px; }
-      th { background:#f5f5f5; padding:8px; text-align:left; border:1px solid #ddd; font-size:10px; }
-      td { padding:8px; border:1px solid #ddd; font-size:10px; }
-      .inv-total { text-align:right; font-size:16px; font-weight:bold; margin:10px 0 20px; }
-      .inv-footer { font-size:9px; color:#666; border-top:1px solid #ddd; padding-top:12px; margin-top:20px; }
-      .inv-footer p { margin-bottom:4px; }
-    </style></head><body>${el.innerHTML}</body></html>`);
+    doc.write('<!DOCTYPE html><html><head><style>' + INVOICE_CSS + '</style></head><body>' + el.innerHTML + '</body></html>');
     doc.close();
 
     const opt = {
       margin: 0,
       filename: document.getElementById('invNumero').value + '.pdf',
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      html2canvas: { scale: 2, useCORS: true, width: 794, windowWidth: 794 },
+      jsPDF: { unit: 'px', format: 'a4', orientation: 'portrait', hotfixes: ['px_scaling'] },
     };
     html2pdf().set(opt).from(doc.body).save().then(() => {
       document.body.removeChild(iframe);
