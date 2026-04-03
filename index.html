@@ -622,17 +622,27 @@
     container.innerHTML = '<div class="invoice-preview" id="invoicePrint">' + buildInvoiceHTML() + '</div>';
   }
 
-  function exportPDF() {
-    if (!document.getElementById('invoicePrint')) return toast('Générez d\'abord un aperçu', 'error');
-    const fullHTML = '<div style="font-family:Georgia,serif; font-size:11px; line-height:1.6; color:#333;">' + buildInvoiceHTML() + '</div>';
-    const opt = {
+  function getPDFOptions() {
+    return {
       margin: [5, 7, 5, 7],
       filename: document.getElementById('invNumero').value + '.pdf',
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2 },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
     };
-    html2pdf().set(opt).from(fullHTML, 'string').save();
+  }
+
+  function getInvoiceFullHTML() {
+    return '<div style="font-family:Georgia,serif; font-size:11px; line-height:1.6; color:#333;">' + buildInvoiceHTML() + '</div>';
+  }
+
+  function generatePDFBlob() {
+    return html2pdf().set(getPDFOptions()).from(getInvoiceFullHTML(), 'string').toPdf().get('pdf').then(pdf => pdf.output('blob'));
+  }
+
+  function exportPDF() {
+    if (!document.getElementById('invoicePrint')) return toast('Générez d\'abord un aperçu', 'error');
+    html2pdf().set(getPDFOptions()).from(getInvoiceFullHTML(), 'string').save();
     toast('PDF en cours de génération...', 'success');
   }
 
@@ -676,18 +686,55 @@ ${em.nom || ''}${em.activite ? '\n' + em.activite : ''}${em.email ? '\n' + em.em
   }
 
   // ═══════════════════════════════════════════════
+  async function uploadPDFToNotion(blob, filename) {
+    const proxy = getProxyUrl();
+    const apiKey = getApiKey();
+    const headers = { 'Authorization': `Bearer ${apiKey}`, 'Notion-Version': NOTION_VERSION };
+
+    // 1. Create file upload
+    const upload = await fetch(`${proxy}/v1/file-uploads`, {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: filename }),
+    }).then(r => { if (!r.ok) throw new Error('Échec création upload: ' + r.status); return r.json(); });
+
+    // 2. Send file bytes
+    const form = new FormData();
+    form.append('file', blob, filename);
+    form.append('part_number', '1');
+    await fetch(`${proxy}/v1/file-uploads/${upload.id}/send`, {
+      method: 'POST',
+      headers,
+      body: form,
+    }).then(r => { if (!r.ok) throw new Error('Échec envoi fichier: ' + r.status); return r.json(); });
+
+    // 3. Complete upload
+    await fetch(`${proxy}/v1/file-uploads/${upload.id}/complete`, {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+    }).then(r => { if (!r.ok) throw new Error('Échec finalisation upload: ' + r.status); return r.json(); });
+
+    return upload.id;
+  }
+
   async function saveToNotion() {
     if (!getApiKey()) return toast('Clé API requise', 'error');
+    if (!document.getElementById('invoicePrint')) return toast('Générez d\'abord un aperçu', 'error');
     const sel = heures.filter(h => h.selected);
     if (sel.length === 0) return toast('Aucune heure sélectionnée', 'error');
 
     const totalHT = sel.reduce((s, h) => s + h.montant, 0);
     const em = getEmetteur();
+    const filename = document.getElementById('invNumero').value + '.pdf';
 
     try {
-      toast('Création de la facture dans Notion...', 'success');
+      // 1. Generate PDF and upload to Notion
+      toast('Génération et upload du PDF...', 'success');
+      const blob = await generatePDFBlob();
+      const fileUploadId = await uploadPDFToNotion(blob, filename);
 
-      // 1. Create invoice entry
+      // 2. Create invoice entry with PDF attached
+      toast('Création de la facture dans Notion...', 'success');
       const facture = await notionPost('pages', {
         parent: { database_id: DB_FACTURES_ID },
         properties: {
@@ -700,10 +747,11 @@ ${em.nom || ''}${em.activite ? '\n' + em.activite : ''}${em.email ? '\n' + em.em
           'Heures Liées': { relation: sel.map(h => ({ id: h.id })) },
           'N° SIRET Émetteur': { rich_text: [{ text: { content: em.siret || '' } }] },
           'Notes': { rich_text: [{ text: { content: document.getElementById('invNotes').value || '' } }] },
+          'Fichier PDF': { files: [{ file_upload: { id: fileUploadId } }] },
         }
       });
 
-      // 2. Update each hour entry
+      // 3. Update each hour entry
       for (const h of sel) {
         await notionPatch(`pages/${h.id}`, {
           properties: {
@@ -713,9 +761,9 @@ ${em.nom || ''}${em.activite ? '\n' + em.activite : ''}${em.email ? '\n' + em.em
         });
       }
 
-      toast('Facture sauvegardée dans Notion !', 'success');
+      toast('Facture + PDF sauvegardés dans Notion !', 'success');
     } catch (e) {
-      toast(`Erreur Notion : ${e.message}`, 'error');
+      toast(`Erreur : ${e.message}`, 'error');
     }
   }
 
