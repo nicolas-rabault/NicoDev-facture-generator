@@ -283,6 +283,7 @@
       <h2>Aperçu de la facture</h2>
       <div class="actions-bar">
         <button class="btn btn-primary" onclick="exportPDF()">Télécharger PDF</button>
+        <button class="btn btn-outline" style="background:#7c3aed;color:#fff;border-color:#7c3aed;" onclick="sendInvoice()">Envoyer par email</button>
         <button class="btn btn-success" onclick="saveToNotion()">Sauvegarder dans Notion</button>
         <button class="btn btn-outline" onclick="goToStep(2)">← Modifier</button>
       </div>
@@ -680,6 +681,43 @@
 
   // ═══════════════════════════════════════════════
   //  SAVE TO NOTION
+  // ═══════════════════════════════════════════════
+  //  SEND BY EMAIL
+  // ═══════════════════════════════════════════════
+  function sendInvoice() {
+    const el = document.getElementById('invoicePrint');
+    if (!el) return toast('Générez d\'abord un aperçu', 'error');
+
+    const em = getEmetteur();
+    const numero = document.getElementById('invNumero').value;
+    const clientEmail = selectedClient?.email || '';
+    const emEmail = em.email || '';
+    const totalHT = heures.filter(h => h.selected).reduce((s, h) => s + h.montant, 0);
+    const echeance = formatDate(document.getElementById('invDateEcheance').value);
+
+    const subject = `Facture ${numero} — ${em.nom || 'NicoDev'}`;
+    const body = `Bonjour,
+
+Veuillez trouver ci-joint la facture ${numero} d'un montant de ${formatMoney(totalHT)} € HT.
+
+Date d'échéance : ${echeance}
+Mode de paiement : ${document.getElementById('invMode').value}${em.iban ? '\nIBAN : ' + em.iban : ''}
+
+N'hésitez pas à me contacter pour toute question.
+
+Cordialement,
+${em.nom || ''}${em.activite ? '\n' + em.activite : ''}${em.email ? '\n' + em.email : ''}`;
+
+    // Download PDF first
+    exportPDF();
+
+    // Open mailto with pre-filled fields
+    const mailto = `mailto:${encodeURIComponent(clientEmail)}?cc=${encodeURIComponent(emEmail)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    setTimeout(() => window.open(mailto, '_blank'), 500);
+
+    toast('PDF téléchargé — glissez-le en pièce jointe dans le mail', 'success');
+  }
+
   // ═══════════════════════════════════════════════
   async function saveToNotion() {
     if (!getApiKey()) return toast('Clé API requise', 'error');
